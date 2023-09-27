@@ -13,6 +13,8 @@ const io = socketIo(server);
 
 const logfilename = "log/access.log";
 
+const maxlines = 50;
+
 // In-memory variable to store the last 50 log entries
 const logEntries = [];
 
@@ -38,7 +40,7 @@ app.use(
           accessLogStream.write(message);
           // Update the in-memory variable
           logEntries.push(message.trim());
-          if (logEntries.length > 50) logEntries.shift();
+          while (logEntries.length > maxlines) logEntries.shift();
           // Emit to all connected clients
           io.emit("update", logEntries.join("\n"));
         },
@@ -76,7 +78,7 @@ io.on("connection", (socket) => {
   socket.emit("update", logEntries.join("\n"));
 });
 
-// Load the last 50 log entries from the file into memory at the start
+// Load the last maxlines log entries from the file into memory at the start
 const loadLastLines = () => {
   const fileStream = fs.createReadStream(path.join(__dirname, logfilename), {
     encoding: "utf-8",
@@ -85,7 +87,7 @@ const loadLastLines = () => {
   const lines = [];
   rl.on("line", (line) => {
     lines.push(line);
-    if (lines.length > 50) lines.shift();
+    while (lines.length > maxlines) lines.shift();
   });
   rl.on("close", () => {
     logEntries.push(...lines);
